@@ -1,5 +1,5 @@
 # Deploying a Secure Three-Tier AWS Architecture with Terraform
-
+![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/2ffct8vhhcz7lww4yyxb.png)
 
 ```
 project-root/
