@@ -1,3 +1,4 @@
+# Deploying a Secure Three-Tier AWS Architecture with Terraform
 ```
 project-root/
 ├── modules/
