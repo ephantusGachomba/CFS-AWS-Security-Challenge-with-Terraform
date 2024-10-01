@@ -1,5 +1,7 @@
 # Deploying a Secure Three-Tier AWS Architecture with Terraform
-![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/2ffct8vhhcz7lww4yyxb.png)
+
+![Architecture Diagram](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/2ffct8vhhcz7lww4yyxb.png)
+
 
 ```
 project-root/
@@ -47,123 +49,129 @@ project-root/
 └── README.md
 ```
 
+[Blog Post](https://dev.to/ephantus_gachomba_/-deploying-a-secure-three-tier-aws-architecture-with-terraform-3nfc)
 
-[Blog Post] (https://dev.to/ephantus_gachomba_/-deploying-a-secure-three-tier-aws-architecture-with-terraform-3nfc)
+## Security Considerations
+1. **Create Before Destroy** = `true` for EC2 Instances.
+2. **Public ELB** can only be accessed via CloudFront:
+    ```hcl
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
+    ```
+3. **Viewer Protocol** is `redirect-to-https`.
+4. **Whitelisted Countries**: `["US", "CA", "KE"]`.
 
-Security consideration:
-1. Create before destroy = True for Ec2 Instances
-2. Public ELB can only be accessed via the Cloudfront only prefix_list_ids=[data.aws_ec2_managed_prefix_list.cloudfront.id]
-3.- viewer protocol is redirect-to-https
--- whitelisted countries are ["US", "CA", "KE"]
+---
 
 ## Step 1: VPC Service
 - **Create VPC**
 - **Create Subnets**:
-    - `us-east-1a` (Public Subnet A, Private Subnet A, Private Subnet C)
-    - `us-east-1b` (Public Subnet B, Private Subnet B, Private Subnet D)
+    - `us-east-1a`: (Public Subnet A, Private Subnet A, Private Subnet C)
+    - `us-east-1b`: (Public Subnet B, Private Subnet B, Private Subnet D)
 - **Create Internet Gateway**
 - **Create Route Table**
-- **Create Route**
-    - `cloudforce_rt`: `destination_cidr_block = "0.0.0.0/0"`
+    - **Route**:
+      ```hcl
+      cloudforce_rt: destination_cidr_block = "0.0.0.0/0"
+      ```
 - **Associate Route Table to Public Subnets**: (A, B)
 - **Create an Elastic IP**
-- **Create a NAT Gateway in Public Subnet A and associate Elastic IP to the NAT Gateway**
-- **Create a Route Table for NAT Gateway**: `destination_cidr_block = "0.0.0.0/0"`
-- **Associate Route Table for NAT Gateway**: (Private Subnets:: A , B, C, D)
+- **Create a NAT Gateway in Public Subnet A and associate it with the Elastic IP**
+- **Create a Route Table for NAT Gateway**:
+    ```hcl
+    destination_cidr_block = "0.0.0.0/0"
+    ```
+- **Associate Route Table for NAT Gateway**: (Private Subnets: A, B, C, D)
 
 ---
 
-## Step 2: ec2_webserver
-- **Create a launch web template`**: 
-- **Create a Webserver Security Group`**: 
+## Step 2: EC2 Webserver
+- **Create a Launch Web Template**
+- **Create a Webserver Security Group**:
     - **Inbound Rules**:
-    - Allow traffic from ELB in public (80 & 443)
+        - Allow traffic from ELB in public (ports 80 & 443).
     - **Outbound Rules**:
-    - Allow all outgoing traffic to the internet
-- **Output`**:
-    -output launch_template_id (used by /asg_webserver module)
-    -output webserver_sg (used by [/public_elb/, /appserver_elb/] modules as source for security groups)
----
-
-## Step 3: asg_webserver module
-(`webserverASG.tf`)
-- **Creates the ASG for the webserver Instances**:
+        - Allow all outgoing traffic to the internet.
+- **Outputs**:
+    - `launch_template_id` (used by `/asg_webserver` module).
+    - `webserver_sg` (used by `/public_elb/`, `/appserver_elb/` modules as source for security groups).
 
 ---
 
-## Step 4: ec2_appserver module
-- - **Create a launch app template`**: (`launchapp.tf`)
-- - **Create App Server Security Group`**:(`appserver_sg.tf`)
+## Step 3: ASG Webserver Module
+- **Creates the Auto Scaling Group (ASG) for the Webserver Instances**.
+
+---
+
+## Step 4: EC2 Appserver Module
+- **Create a Launch App Template**: (`launchapp.tf`)
+- **Create App Server Security Group**: (`appserver_sg.tf`)
     - **Inbound Rules**:
-    - Allow traffic from ELB app server (80 & 443)
-    -Allow traffic from ELB web server (80 & 443)
+        - Allow traffic from ELB (80 & 443).
+        - Allow traffic from the web server (80 & 443).
     - **Outbound Rules**:
-    - Allow all outgoing traffic to the internet
-- - **Output`**:
-    -output appserver_sg (used by appserver_elb sg)
-    -output launch_template_id (used by asg_appserver)
+        - Allow all outgoing traffic to the internet.
+- **Outputs**:
+    - `appserver_sg` (used by `appserver_elb_sg`).
+    - `launch_template_id` (used by `asg_appserver`).
 
 ---
 
-## Step 5: asg_appserver module
--creates an auto-scaling group (`appserverASG.tf`)
-- **Create Launch Template for Application Server**: 
+## Step 5: ASG Appserver Module
+- **Creates the Auto Scaling Group for the Application Server**.
 
 ---
 
-## Step 6: public_elb module
-- Creates [lb, target_group, listener] (`main.tf`)
-- - **Create public ELB Security Group`**:(`securitygroup_elb.tf`)
+## Step 6: Public ELB Module
+- **Creates Load Balancer, Target Group, Listener**: (`main.tf`)
+- **Create Public ELB Security Group**: (`securitygroup_elb.tf`)
     - **Inbound Rules**:
-    - Allow traffic from cloudfront only (80 & 443)
+        - Allow traffic from CloudFront only (ports 80 & 443).
     - **Outbound Rules**:
-    - Allow all outgoing traffic to the webservers
--Outputs :
-    -frontendTG (used by asg_webserver)
-    -elb_security_group_id(used by ec2_appserver, ec2_webserver)
-    -frontend_lb_dns_name(used by cloudfront)
-    -frontend_lb(used by cloudfront)
+        - Allow all outgoing traffic to the web servers.
+- **Outputs**:
+    - `frontendTG` (used by `asg_webserver`).
+    - `elb_security_group_id` (used by `ec2_appserver`, `ec2_webserver`).
+    - `frontend_lb_dns_name` (used by CloudFront).
+    - `frontend_lb` (used by CloudFront).
 
 ---
 
-## Step 7: appserver_elb module
-- **Create app server ELB (`main.tf`)**:
-    - Load balancer type: `application`
-    -lb target group( appserverTG )
-    -lb listener 
-- - **Create public ELB Security Group`**:(`securitygroup_elb.tf`)
+## Step 7: Appserver ELB Module
+- **Create Application Load Balancer**: (`main.tf`)
+    - Load balancer type: `application`.
+- **Create App Server ELB Security Group**: (`securitygroup_elb.tf`)
     - **Inbound Rules**:
-    - Allow traffic from Web instances
+        - Allow traffic from Web Instances.
     - **Outbound Rules**:
-    - Allow all outgoing traffic to the Internet
--Outputs :
-    -appserver_elb_sg_id (used by ec2_appserver)
-    -appserverTG(used by asg_appserver)
+        - Allow all outgoing traffic to the internet.
+- **Outputs**:
+    - `appserver_elb_sg_id` (used by EC2 Appserver).
+    - `appserverTG` (used by ASG Appserver).
 
 ---
 
-## Step 8: cloudfront module
---domain name = 
--- origin protocol type is http 
--- viewer protocol is redirect-to-https
--- whitelisted countries are ["US", "CA", "KE"]
--Outputs :
-    -cloudfront_domain_name (shows the domain name of cloudfront on terminal )
+## Step 8: CloudFront Module
+- **Domain Name**: `cloudfront_domain_name`.
+- **Origin Protocol Type**: HTTP.
+- **Viewer Protocol**: `redirect-to-https`.
+- **Whitelisted Countries**: `["US", "CA", "KE"]`.
+- **Outputs**:
+    - `cloudfront_domain_name` (displayed on terminal).
 
 ---
 
-## Step 9: cloudtrails modules
---create a bucket to store cloudfront trails
---Create CloudTrail to log CloudFront 
+## Step 9: CloudTrails Module
+- **Create an S3 Bucket** to store CloudFront logs.
+- **Create CloudTrail** to log CloudFront events.
 
 ---
 
-## Step 10: root module (main.tf)
---initialize all the modules with their sources and dependant arguments
+## Step 10: Root Module (`main.tf`)
+- **Initialize all modules** with their sources and dependent arguments.
 
 ---
 
-## Step 11: root module (outputs.tf)
---ouput :
-    -cloudfront_domain_name
-    -frontend_lb_dns_name
+## Step 11: Root Module (`outputs.tf`)
+- **Outputs**:
+    - `cloudfront_domain_name`.
+    - `frontend_lb_dns_name`.
