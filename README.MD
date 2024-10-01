@@ -48,7 +48,7 @@ project-root/
 ```
 
 
-Blog Post (https://dev.to/ephantus_gachomba_/-deploying-a-secure-three-tier-aws-architecture-with-terraform-3nfc)
+[Blog Post] (https://dev.to/ephantus_gachomba_/-deploying-a-secure-three-tier-aws-architecture-with-terraform-3nfc)
 
 # Deploying a Secure Three-Tier AWS Architecture with Terraform
 
