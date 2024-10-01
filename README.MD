@@ -48,12 +48,7 @@ project-root/
 ```
 
 
-
-
-![architecture of diagram](https://github.com/user-attachments/assets/98ea43e6-68d2-4689-9b6f-bd1e1f8d47aa)
-
-
-https://dev.to/ephantus_gachomba_/-deploying-a-secure-three-tier-aws-architecture-with-terraform-3nfc
+Blog Post (https://dev.to/ephantus_gachomba_/-deploying-a-secure-three-tier-aws-architecture-with-terraform-3nfc)
 
 # Deploying a Secure Three-Tier AWS Architecture with Terraform
 
