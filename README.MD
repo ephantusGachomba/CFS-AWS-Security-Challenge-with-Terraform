@@ -50,7 +50,9 @@ project-root/
 
 [Blog Post] (https://dev.to/ephantus_gachomba_/-deploying-a-secure-three-tier-aws-architecture-with-terraform-3nfc)
 
-# Deploying a Secure Three-Tier AWS Architecture with Terraform
+Security consideration:
+1. Create before destroy = True for Ec2 Instances
+
 
 ## Step 1: VPC Service
 - **Create VPC**
@@ -65,25 +67,25 @@ project-root/
 - **Create an Elastic IP**
 - **Create a NAT Gateway in Public Subnet A and associate Elastic IP to the NAT Gateway**
 - **Create a Route Table for NAT Gateway**: `destination_cidr_block = "0.0.0.0/0"`
-- **Associate Route Table for NAT Gateway**: (Private Subnet A & Private Subnet B)
+- **Associate Route Table for NAT Gateway**: (Private Subnets:: A , B, C, D)
 
 ---
 
-## Step 2: Create a Security Group for EC2 Instances
-- **Create Security Group `instancesg`**: 
-    - Allow traffic on port 80 (HTTP), port 3000 (Custom), port 22 (SSH)
-    - Allow all outgoing traffic
-- **Inbound Rules**:
-    - Port 80 (HTTP): Allow
-    - Port 3000 (Custom): Allow
-    - Port 22 (SSH): Allow
-- **Outbound Rules**:
-    - Allow all outgoing traffic
-
+## Step 2: ec2_webserver
+- **Create a launch web template`**: 
+- **Create a Webserver Security Group`**: 
+            - **Inbound Rules**:
+                - Allow traffic from ELB in public (80 & 443)
+            - **Outbound Rules**:
+                - Allow all outgoing traffic to the internet
+- **Output **::
+        -output launch_template_id (used by /asg_webserver module)
+        -output webserver_sg (used by [/public_elb/, /appserver_elb/] modules as source for security groups)
 ---
 
-## Step 3: Create a Frontend Launch Template (`launchweb.tf`)
-- **Create Launch Template for Frontend**:
+## Step 3: asg_webserver module
+(`webserverASG.tf`)
+- **Creates the ASG for the webserver Instances**:
     - `image_id`
     - `instance_type`
     - Security group: `instancesg`
