@@ -99,7 +99,7 @@ project-root/
 - **Create a Launch Web Template**
 - **Create a Webserver Security Group**:
     - **Inbound Rules**:
-        - Allow traffic from ELB in public (ports 80 & 443).
+        - Allow traffic from ELB in public (ports 80).
     - **Outbound Rules**:
         - Allow all outgoing traffic to the internet.
 - **Outputs**:
@@ -117,8 +117,7 @@ project-root/
 - **Create a Launch App Template**: (`launchapp.tf`)
 - **Create App Server Security Group**: (`appserver_sg.tf`)
     - **Inbound Rules**:
-        - Allow traffic from ELB (80 & 443).
-        - Allow traffic from the web server (80 & 443).
+        - Allow traffic from app ELB ( 443).
     - **Outbound Rules**:
         - Allow all outgoing traffic to the internet.
 - **Outputs**:
