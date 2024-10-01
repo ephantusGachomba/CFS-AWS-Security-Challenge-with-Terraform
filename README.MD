@@ -52,7 +52,9 @@ project-root/
 
 Security consideration:
 1. Create before destroy = True for Ec2 Instances
-
+2. Public ELB can only be accessed via the Cloudfront only prefix_list_ids=[data.aws_ec2_managed_prefix_list.cloudfront.id]
+3.- viewer protocol is redirect-to-https
+-- whitelisted countries are ["US", "CA", "KE"]
 
 ## Step 1: VPC Service
 - **Create VPC**
@@ -74,104 +76,94 @@ Security consideration:
 ## Step 2: ec2_webserver
 - **Create a launch web template`**: 
 - **Create a Webserver Security Group`**: 
-            - **Inbound Rules**:
-                - Allow traffic from ELB in public (80 & 443)
-            - **Outbound Rules**:
-                - Allow all outgoing traffic to the internet
-- **Output **::
-        -output launch_template_id (used by /asg_webserver module)
-        -output webserver_sg (used by [/public_elb/, /appserver_elb/] modules as source for security groups)
+    - **Inbound Rules**:
+    - Allow traffic from ELB in public (80 & 443)
+    - **Outbound Rules**:
+    - Allow all outgoing traffic to the internet
+- **Output`**:
+    -output launch_template_id (used by /asg_webserver module)
+    -output webserver_sg (used by [/public_elb/, /appserver_elb/] modules as source for security groups)
 ---
 
 ## Step 3: asg_webserver module
 (`webserverASG.tf`)
 - **Creates the ASG for the webserver Instances**:
-    - `image_id`
-    - `instance_type`
-    - Security group: `instancesg`
-    - Associate public IP
-    - `create_before_destroy = true`
-    - `user_data`: `frontenddata`
 
 ---
 
-## Step 4: Create User Data for Frontend Web
-- Include user data script to set up the frontend web server.
+## Step 4: ec2_appserver module
+- - **Create a launch app template`**: (`launchapp.tf`)
+- - **Create App Server Security Group`**:(`appserver_sg.tf`)
+    - **Inbound Rules**:
+    - Allow traffic from ELB app server (80 & 443)
+    -Allow traffic from ELB web server (80 & 443)
+    - **Outbound Rules**:
+    - Allow all outgoing traffic to the internet
+- - **Output`**:
+    -output appserver_sg (used by appserver_elb sg)
+    -output launch_template_id (used by asg_appserver)
 
 ---
 
-## Step 5: Create a Launch Template for the Application Server (`launchapp.tf`)
-- **Create Launch Template for Application Server**:
-    - `image_id`
-    - `instance_type`
-    - Security group: `instancesg`
-    - Associate public IP
-    - `create_before_destroy = true`
-    - `user_data`: `backenddata.sh`
+## Step 5: asg_appserver module
+-creates an auto-scaling group (`appserverASG.tf`)
+- **Create Launch Template for Application Server**: 
 
 ---
 
-## Step 6: Create User Data for Backend Web
-- Include user data script to set up the backend web server.
+## Step 6: public_elb module
+- Creates [lb, target_group, listener] (`main.tf`)
+- - **Create public ELB Security Group`**:(`securitygroup_elb.tf`)
+    - **Inbound Rules**:
+    - Allow traffic from cloudfront only (80 & 443)
+    - **Outbound Rules**:
+    - Allow all outgoing traffic to the webservers
+-Outputs :
+    -frontendTG (used by asg_webserver)
+    -elb_security_group_id(used by ec2_appserver, ec2_webserver)
+    -frontend_lb_dns_name(used by cloudfront)
+    -frontend_lb(used by cloudfront)
 
 ---
 
-## Step 7: Create an Internet Facing Load Balancer
-- **Create Load Balancer for Frontend (`aws_lb.frontend_lb`)**:
+## Step 7: appserver_elb module
+- **Create app server ELB (`main.tf`)**:
     - Load balancer type: `application`
-    - Security group: `lbinstancesgB`
-    - Subnets: Public Subnets A & B
-- **Create Target Group for Frontend (`aws_lb_target_group.frontendTG`)**:
-    - Port 80 (HTTP)
-    - Health checks
-- **Create Listener for Frontend (`aws_lb_listener.frontendListener`)**:
-    - Port 80 (HTTP)
-    - Forward to target group: `frontendTG`
+    -lb target group( appserverTG )
+    -lb listener 
+- - **Create public ELB Security Group`**:(`securitygroup_elb.tf`)
+    - **Inbound Rules**:
+    - Allow traffic from Web instances
+    - **Outbound Rules**:
+    - Allow all outgoing traffic to the Internet
+-Outputs :
+    -appserver_elb_sg_id (used by ec2_appserver)
+    -appserverTG(used by asg_appserver)
 
 ---
 
-## Step 8: Create a Load Balancer for Backend Service
-- **Create Load Balancer for Backend (`aws_lb.backend_lb`)**:
-    - Load balancer type: `application`
-    - Security group: `lbsecuritygroupB`
-    - Subnets: Private Subnets A & B
-- **Create Target Group for Backend (`aws_lb_target_group.backendTG`)**:
-    - Port 80 (HTTP)
-    - Health checks
-- **Create Listener for Backend (`aws_lb_listener.backendListener`)**:
-    - Port 80 (HTTP)
-    - Forward to target group: `backendTG`
+## Step 8: cloudfront module
+--domain name = 
+-- origin protocol type is http 
+-- viewer protocol is redirect-to-https
+-- whitelisted countries are ["US", "CA", "KE"]
+-Outputs :
+    -cloudfront_domain_name (shows the domain name of cloudfront on terminal )
 
 ---
 
-## Step 9: Create Security Groups for Load Balancers
-- **Security Group for Frontend Load Balancer** (`lbinstancesgB`):
-    - Open ports 80 & 3000 for ingress
-- **Security Group for Backend Load Balancer** (`lbsecuritygroupB`):
-    - Open port 80 for ingress
-    - Open port 3000 for ingress
+## Step 9: cloudtrails modules
+--create a bucket to store cloudfront trails
+--Create CloudTrail to log CloudFront 
 
 ---
 
-## Step 10: Create an Auto Scaling Group for Frontend Service
-- **Create Auto Scaling Group for Frontend (`aws_autoscaling_group.frontendASG`)**:
-    - Min size: `2`
-    - Max size: `6`
-    - Health check type: `EC2`
-    - Public subnets: A & B
-    - Target group ARNs: `aws_lb_target_group.frontendTG.arn`
+## Step 10: root module (main.tf)
+--initialize all the modules with their sources and dependant arguments
 
 ---
 
-## Step 11: Create an Auto Scaling Group for Backend Service
-- **Create Auto Scaling Group for Backend (`aws_autoscaling_group.backendASG`)**:
-    - Min size: `2`
-    - Max size: `6`
-    - Health check type: `EC2`
-    - Private subnets: A & B
-    - Target group ARNs: `aws_lb_target_group.backendTG.arn`
-
-## Step 12: Create s3 bucket & cloudtrails
-- **create aws_s3_bucket (cloudfront_trail_bucket)**
---data "aws_iam_policy_document" "cloudfront_trail_policy"
---"aws_cloudtrail" "cloudfront_trail"
+## Step 11: root module (outputs.tf)
+--ouput :
+    -cloudfront_domain_name
+    -frontend_lb_dns_name
