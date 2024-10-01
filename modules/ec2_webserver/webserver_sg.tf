@@ -22,18 +22,6 @@ resource "aws_security_group_rule" "allow_tcp_web_80" {
   source_security_group_id = var.elb_security_group_id
 }
 
-# Inbound rule for HTTPS traffic from the Web ELB (port 443)
-resource "aws_security_group_rule" "allow_tcp_web_443" {
-  type                     = "ingress"
-  security_group_id        = aws_security_group.webserver_sg.id
-  from_port                = 443
-  to_port                  = 443
-  protocol                 = "tcp"
-  description              = "Allow HTTPS from public ELB"
-  source_security_group_id = var.elb_security_group_id
-}
-
-
 
 # Allow all outbound traffic to internet(http)
 resource "aws_security_group_rule" "allow_outbound_http" {
