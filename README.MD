@@ -52,13 +52,24 @@ project-root/
 [Blog Post](https://dev.to/ephantus_gachomba_/-deploying-a-secure-three-tier-aws-architecture-with-terraform-3nfc)
 
 ## Security Considerations
-1. **Create Before Destroy** = `true` for EC2 Instances.
-2. **Public ELB** can only be accessed via CloudFront:
+1. **Create Before Destroy** = `true` for EC2 Instances:
+    - This ensures that new EC2 instances are created before terminating the old ones, minimizing downtime and ensuring availability during updates or changes.
+   
+2. **Public ELB can only be accessed via CloudFront**:
     ```hcl
     prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
     ```
-3. **Viewer Protocol** is `redirect-to-https`.
-4. **Whitelisted Countries**: `["US", "CA", "KE"]`.
+    - This restricts direct access to the Application Load Balancer (ALB), allowing only CloudFront to forward traffic, which enhances security by adding another layer of control and filtering malicious traffic.
+
+3. **Viewer Protocol** is `redirect-to-https`:
+    - This setting forces HTTP requests to be redirected to HTTPS, ensuring all traffic is encrypted in transit for better security, particularly for sensitive data or login sessions.
+
+4. **Whitelisted Countries**: `["US", "CA", "KE"]`:
+    - By specifying allowed countries, only requests originating from the listed regions (United States, Canada, Kenya) can access the application, providing geo-based access control to mitigate security risks.
+
+5. **CloudTrail for Logging**:
+    - AWS CloudTrail is enabled to log API calls and user activities across your AWS environment, allowing you to track changes and detect potential security threats or compliance issues. Logs can be stored securely in an S3 bucket for audit and analysis.
+
 
 ---
 
